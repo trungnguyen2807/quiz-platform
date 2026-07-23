@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+
+  quizzes Quiz[]
+
+  @@map("admins")
+}
+
+model Quiz {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  category    String?
+  difficulty  Difficulty @default(EASY)
+  timeLimit   Int        @default(0) // seconds; 0 = no limit
+  isPublished Boolean    @default(false)
+  createdBy   String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  admin     Admin      @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  questions Question[]
+  attempts  Attempt[]
+
+  @@index([isPublished])
+  @@map("quizzes")
+}
+
+model Question {
+  id      String @id @default(cuid())
+  quizId  String
+  content String
+  points  Int    @default(1)
+  order   Int    @default(0)
+
+  quiz           Quiz            @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  choices        Choice[]
+  attemptAnswers AttemptAnswer[]
+
+  @@index([quizId])
+  @@map("questions")
+}
+
+model Choice {
+  id         String  @id @default(cuid())
+  questionId String
+  content    String
+  isCorrect  Boolean @default(false)
+
+  question       Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  attemptAnswers AttemptAnswer[]
+
+  @@index([questionId])
+  @@map("choices")
+}
+
+model Attempt {
+  id             String   @id @default(cuid())
+  quizId         String
+  nickname       String
+  score          Int      @default(0)
+  correctAnswers Int      @default(0)
+  totalQuestions Int      @default(0)
+  timeSpent      Int      @default(0) // seconds
+  submittedAt    DateTime @default(now())
+
+  quiz    Quiz            @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers AttemptAnswer[]
+
+  @@index([quizId, score, timeSpent, submittedAt])
+  @@map("attempts")
+}
+
+model AttemptAnswer {
+  id         String  @id @default(cuid())
+  attemptId  String
+  questionId String
+  choiceId   String?
+  isCorrect  Boolean @default(false)
+
+  attempt  Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  choice   Choice?  @relation(fields: [choiceId], references: [id], onDelete: SetNull)
+
+  @@index([attemptId])
+  @@map("attempt_answers")
+}
