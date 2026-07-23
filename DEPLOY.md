@@ -31,8 +31,11 @@ Push this repo to GitHub first — all three services deploy from a Git
    - **Runtime:** Node
    - **Build Command:**
      ```
-     npm install --include=dev && npx prisma generate && npm run build && npx prisma migrate deploy
+     npm install --include=dev && npm run render-build
      ```
+     (`render-build` = prisma generate → compile → `migrate deploy` → seed. It runs
+     migrations **and** seeds the DB, so no Shell access is needed — handy on the free
+     plan where Shell is locked.)
    - **Start Command:**
      ```
      npm start
@@ -48,13 +51,10 @@ Push this repo to GitHub first — all three services deploy from a Git
    | `ADMIN_PASSWORD` | your admin password |
    | `CORS_ORIGIN` | your Vercel URL (add after step 3), e.g. `https://your-app.vercel.app` |
    | `NODE_ENV` | `production` |
-4. Deploy. The build runs the migration automatically (`prisma migrate deploy`).
-5. **Seed the admin user once** — open the Render **Shell** tab and run:
-   ```
-   npm run db:seed:prod
-   ```
-   (This runs the compiled `dist/seed.js`; it upserts the admin and adds demo quizzes
-   only if the DB is empty. Safe to run more than once.)
+4. Deploy. The build automatically runs migrations **and** seeds the database
+   (admin user + demo quizzes) via `render-build` — no Shell needed. The seed is
+   idempotent: it upserts the admin and only adds demo quizzes when the DB is empty,
+   so it's safe to run on every deploy.
 6. Copy your backend URL, e.g. `https://quiz-platform-api.onrender.com`.
 
 > **Note:** `prisma` and `typescript` are dev dependencies, so the build uses
