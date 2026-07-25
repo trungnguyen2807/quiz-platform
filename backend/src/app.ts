@@ -9,9 +9,26 @@ import { errorHandler, notFoundHandler } from './middleware/error.js';
 export function createApp() {
   const app = express();
 
+  // Normalize configured origins (trim + drop any trailing slash) so a value like
+  // "https://app.vercel.app/" still matches the browser's slash-less Origin header.
+  const stripSlash = (s: string) => s.trim().replace(/\/+$/, '');
+  const allowedOrigins = env.corsOrigin
+    .split(',')
+    .map(stripSlash)
+    .filter(Boolean);
+
   app.use(
     cors({
-      origin: env.corsOrigin === '*' ? true : env.corsOrigin.split(','),
+      origin:
+        env.corsOrigin === '*'
+          ? true
+          : (origin, callback) => {
+              // Allow non-browser clients (no Origin header) and any configured match.
+              if (!origin || allowedOrigins.includes(stripSlash(origin))) {
+                return callback(null, true);
+              }
+              return callback(null, false);
+            },
     })
   );
   app.use(express.json({ limit: '1mb' }));
