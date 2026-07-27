@@ -96,3 +96,42 @@ Push this repo to GitHub first — all three services deploy from a Git
 - [ ] `JWT_SECRET` is a real random value in production, not the dev placeholder.
 - [ ] First request after idle is slow on Render Free — that's the cold start, not a bug.
 - [ ] Multiple `CORS_ORIGIN` values (e.g. preview + prod) can be comma-separated.
+
+---
+
+## Maintenance
+
+### Rotate the Neon database password
+
+Resetting the password **invalidates the old connection string**, so the live site
+loses its database until Render is updated. Do steps 1–3 back-to-back.
+
+1. **Neon** (https://console.neon.tech) → your project → **Roles** → role
+   `neondb_owner` → **⋯ → Reset password**. Copy the new password (shown once).
+2. Project **Dashboard → Connect** → **Pooled connection** (host contains `-pooler`),
+   toggle **Show password** → copy the full new connection string.
+3. **Render** → service → **Environment** → edit `DATABASE_URL` → paste the new
+   string → **Save Changes** (Render auto-redeploys).
+4. Verify: `https://<render-app>.onrender.com/api/quizzes` returns quiz JSON.
+
+### Change the admin password
+
+The seed never updates an existing admin's password, so use the reset script. It
+runs against whatever `DATABASE_URL` you give it, so you can target Neon from your
+own machine (no Render Shell needed).
+
+```bash
+cd backend
+# Local dev DB (uses backend/.env):
+npm run admin:reset -- <username> '<newPassword>'
+
+# Production (Neon) — paste the current connection string inline:
+DATABASE_URL="postgresql://neondb_owner:PASSWORD@ep-xxx-pooler.<region>.aws.neon.tech/neondb?sslmode=require" \
+  npm run admin:reset -- <username> '<newPassword>'
+```
+
+- Use the **existing** admin username (matches by username: existing → password
+  updated; a new username → a second admin is created).
+- Keep the whole `DATABASE_URL="..."` on one line; quote the password.
+- This changes only the database; Render's `ADMIN_PASSWORD` var is used only when the
+  seed first creates the admin.
